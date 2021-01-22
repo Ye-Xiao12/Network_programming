@@ -5,6 +5,12 @@
 #include<iostream>
 using namespace std;
 
+//客户端和服务器端变量位置不能变，变量名可以变
+struct DataPackage {
+    int age;
+    string name;
+};
+
 int main() {
     WORD var = MAKEWORD(2, 3);
     WSADATA dat;
@@ -41,28 +47,11 @@ int main() {
         std::cout << "错误，接受到无效客户端SOCKET..." << std::endl;
     }
 
-    cout << "新客户端加入，IP = " << cAddr.sin_family << "; port = " << cAddr.sin_port << endl;
-
-
     while (true) {
         char recvBuf[128];
         int nLen = recv(_cSock, recvBuf, 128, 0);
-        if (nLen == 0) {
-            std::cout << "客户端已退出，任务结束..." << std::endl;
-        }
-        //服务端处理客户端发送的请求
-        if (0 == strcmp(recvBuf, "GetName")) {
-            char myBuf[] = "YeXiao";
-            send(_cSock, myBuf, strlen(myBuf) + 1, 0);
-        }
-        else if (0 == strcmp(recvBuf, "GetAge")) {
-            char myBuf[] = "27";
-            send(_cSock, myBuf, strlen(myBuf) + 1, 0);
-        }
-        else {
-            char myBuf[] = "???";
-            send(_cSock, myBuf, strlen(myBuf) + 1, 0);
-        }
+        DataPackage dp = { 20,"maga" };
+        send(_cSock, (const char*)&dp, sizeof(dp), 0);
     }
 
     //关闭socket

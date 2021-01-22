@@ -5,8 +5,11 @@
 #include<WinSock2.h>
 #include<iostream>
 #include<string>
-#include <stdio.h>
-#include <stdlib.h>
+
+struct DataPackage {
+    int age;
+    std::string name;
+};
 
 int main() {
     WORD var = MAKEWORD(2, 3);
@@ -28,9 +31,6 @@ int main() {
     else {
         std::cout << "连接成功..." << std::endl;
     }
-    //接受服务器信息 recv
-    //char recvBuf[256] = {};
-    //recv(_sock, recvBuf, 256, 0);
 
     while (true) {
         //向服务端发送请求
@@ -41,7 +41,8 @@ int main() {
         send(_sock, sendBuf, 128, 0);
 
         int rLen = recv(_sock, reBuf, 128, 0);
-        printf("收到服务器回答：%s\n", reBuf);
+        DataPackage* dp = (DataPackage*)reBuf;
+        std::cout << "年龄: " << dp->age << "  名字：" <<  dp->name << std::endl;
     }
     // 关闭socket
     closesocket(_sock);
