@@ -5,10 +5,58 @@
 #include<WinSock2.h>
 #include<iostream>
 #include<string>
+#include<string.h>
+using namespace std;
 
-struct DataPackage {
-    int age;
-    std::string name;
+//请求类型
+enum CMD {
+    CMD_LOGIN,
+    CMD_LOGIN_RESULT,
+    CMD_LOGOUT,
+    CMD_LOGOUT_RESULT,
+    CMD_ERROR,
+};
+//报头
+struct DataHeader {
+    short datalength;
+    short cmd;
+};
+
+//Login DataPackage
+struct Login : public DataHeader {
+    Login() {
+        strcpy(this->UserName, "XiaoGang");
+        strcpy(this->PassWord, "12345678");
+        datalength = sizeof(Login);
+        cmd = CMD_LOGIN;
+    }
+    char UserName[32];
+    char PassWord[32];
+};
+//登录请求结果
+struct LoginResult : public DataHeader {
+    LoginResult() {
+        datalength = sizeof(LoginResult);
+        cmd = CMD_LOGIN_RESULT;
+    }
+    int result;
+};
+//登出
+struct Logout : public DataHeader {
+    Logout() {
+        datalength = sizeof(Logout);
+        cmd = CMD_LOGOUT;
+    }
+    char UserName[32];
+};
+
+struct LogoutResult : public DataHeader {
+    LogoutResult() {
+        datalength = sizeof(LogoutResult);
+        cmd = CMD_LOGOUT_RESULT;
+        result = 0;
+    }
+    int result;
 };
 
 int main() {
@@ -34,20 +82,41 @@ int main() {
 
     while (true) {
         //向服务端发送请求
-        char sendBuf[128] = "GetAge";
-        char reBuf[128];
-        std::cout << "请输入请求 " << std::endl;
-        scanf("%s", sendBuf);
-        send(_sock, sendBuf, 128, 0);
+        std::string cmdBuf;
+        std::cout << "请输入命令";
+        std::cin >> cmdBuf;
 
-        int rLen = recv(_sock, reBuf, 128, 0);
-        DataPackage* dp = (DataPackage*)reBuf;
-        std::cout << "年龄: " << dp->age << "  名字：" <<  dp->name << std::endl;
+        if (cmdBuf == "exit") {
+            std::cout << "收到exit命令，任务结束" << std::endl;
+        }
+        else if (cmdBuf == "login") {
+            Login login;
+            strcpy(login.UserName, "XiaoMing");
+            strcpy(login.PassWord, "12345678");
+            //向服务器发送请求
+            send(_sock, (const char*)&login, login.datalength, 0);
+            //接收服务器返回数据
+            LoginResult loginResult;
+            recv(_sock, (char*)&loginResult, sizeof(LoginResult), 0);
+            std::cout << loginResult.result << std::endl;
+        }
+        else if (cmdBuf == "logout") {
+            Logout logout;
+            strcpy(logout.UserName,"大乌龟");
+            //向服务器发送请求命令
+            send(_sock, (char*)&logout, logout.datalength, 0);
+            //接收服务器命令
+            LogoutResult logoutRet;
+            recv(_sock, (char*)&logoutRet, sizeof(LogoutResult), 0);
+            std::cout << logoutRet.result << std::endl;
+        }
+        else {
+            std::cout << "不支持命令，请重新输入：" << std::endl;
+        }
     }
     // 关闭socket
     closesocket(_sock);
-    /// </summary>
-    /// <returns></returns>
+    //清除windows socket环境
     WSACleanup();
     return 0;
 }
