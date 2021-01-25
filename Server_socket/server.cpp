@@ -3,9 +3,13 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include<windows.h>
 #include<WinSock2.h>
+#include<vector>
 #include<string.h>
 #include<iostream>
+#include<algorithm>
 using namespace std;
+vector<SOCKET>g_client;
+int processor(SOCKET _cSock);
 
 //请求类型
 enum CMD {
@@ -85,61 +89,111 @@ int main() {
     else {
         std::cout << "监听网络端口成功.." << std::endl;
     }
-    //accept 等待接受客户端连接
-    sockaddr_in cAddr = {};
-    SOCKET _cSock = INVALID_SOCKET;
-    int nAddrLen = sizeof(sockaddr_in);
-    _cSock = accept(_sock, (sockaddr*)&cAddr, &nAddrLen);
-    if (INVALID_SOCKET == _cSock) {
-        std::cout << "错误，接受到无效客户端SOCKET..." << std::endl;
-    }
-    else {
-        std::cout << "新客户端加入，Socket: " << (int)_cSock << " IP: " << inet_ntoa(cAddr.sin_addr) << std::endl;
-    }
 
     while (true) {
-        DataHeader header = {};
-        //接收客户端信息
-        int nLen = recv(_cSock, (char*)&header, sizeof(DataHeader), 0);
-        if (nLen <= 0) {
-            std::cout << "接收失败" << std::endl;
+        fd_set fdRead;
+        fd_set fdWrite;
+        fd_set fdExp;
+        //FD_ZERO 宏定义，为所有fd_set.count置0
+        FD_ZERO(&fdRead);
+        FD_ZERO(&fdWrite);
+        FD_ZERO(&fdExp);
+        //FD_SEt 宏定义，将fd数组中的首个元素置为_sock
+        FD_SET(_sock, &fdRead);
+        FD_SET(_sock, &fdWrite);
+        FD_SET(_sock, &fdExp);
+        //将g_client数组中所有SOCKET放入对应集合
+        for (int n = (int)g_client.size() - 1; n >= 0; --n) {
+            FD_SET(g_client[n], &fdRead);
+            FD_SET(g_client[n], &fdWrite);
+            FD_SET(g_client[n], &fdExp);
         }
-        else {
-            std::cout << "收到客户端命令: " << header.cmd << " 命令长度： " << header.datalength << std::endl;
-        }
-        switch (header.cmd) {
-            case CMD_LOGIN: 
-            {
-                Login login ;
-                recv(_cSock, (char*)&login + sizeof(DataHeader), sizeof(Login)-sizeof(DataHeader), 0);
-                std::cout << login.UserName << "  "<< login.PassWord << std::endl;
-                //处理部分
-                LoginResult res ;
-                res.result = 1;
-                send(_cSock, (char*)&res, sizeof(LoginResult), 0);
-            }
+        //nfds是一个整数值，是指fd_set集合中（SOCKET）描述符范围
+        //nfds在windows中不生效
+        //最后一个等待时间
+        int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, NULL);
+        if (ret < 0) {
+            std::cout << "select 任务结束..." << std::endl;
             break;
-            case CMD_LOGOUT: 
-            {
-                Logout logout = {};
-                recv(_cSock, (char*)&logout + sizeof(DataHeader), sizeof(Logout)- sizeof(DataHeader), 0);
-                std::cout << logout.UserName << std::endl;
-                //忽略判断用户密码是否正确的过程
-                LogoutResult ret;
-                send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
-            }
-            break;
-            default: 
-                header.cmd = CMD_ERROR;
-                header.datalength = 0;
-                send(_cSock, (char*)&header, sizeof(header), 0);
-                break;
         }
+        //判断_sock是否在fdRead集合中
+        //_sock是否有accept动作
+        if (FD_ISSET(_sock, &fdRead)) {
+            FD_CLR(_sock, &fdRead);
+            //等待接受客户端请求
+            sockaddr_in clientAddr = {};
+            int nAddrlen = sizeof(sockaddr_in);
+            SOCKET _cSock = INVALID_SOCKET;
+            _cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrlen);
+            if (INVALID_SOCKET == _cSock) {
+                std::cout << "ERROR,接收到错误的客户端..." << std::endl;
+            }
+            g_client.push_back(_cSock);
+            std::cout << "新客户端加入：socket: " << (int)_cSock << " ,Ip=" << inet_ntoa(clientAddr.sin_addr) << std::endl;
+        }
+
+        //检查每个_cSock，是否有recv任务
+        //若出现异常，在集合中删除这个socket
+        for (size_t i = 0; i < fdRead.fd_count; ++i) {
+            if (-1 == processor(fdRead.fd_array[i])) {
+                vector<SOCKET>::iterator it = find(g_client.begin(), g_client.end(), fdRead.fd_array[i]);
+                    if (it != g_client.end()) 
+                        g_client.erase(it);
+            }
+        }   
     }
 
     //关闭socket
-    closesocket(_sock);
+    for (size_t i = 0; i < g_client.size() - 1; ++i) {
+        closesocket(g_client[i]);
+    }
     //
     WSACleanup();
     return 0;
+}
+
+int processor(SOCKET _cSock) {
+    char szBuff[1024] = {};
+
+    //接收客户端信息
+    int nLen = recv(_cSock, szBuff, sizeof(DataHeader), 0);
+    DataHeader* header = (DataHeader*)szBuff;
+
+    if (nLen <= 0) {
+        std::cout << "接收失败" << std::endl;
+        return -1;
+    }
+    else {
+        std::cout << "收到客户端命令: " << header->cmd << " 命令长度： " << header->datalength << std::endl;
+    }
+    switch (header->cmd) {
+    case CMD_LOGIN:
+    {
+        //类内元素存放位置应该是按照类的声明顺序存放在内存中存放
+        recv(_cSock, szBuff + sizeof(DataHeader), sizeof(Login) - sizeof(DataHeader), 0);
+        Login* login = (Login*)szBuff;
+        std::cout << login->UserName << "  " << login->PassWord << std::endl;
+        //处理部分
+        LoginResult res;
+        res.result = 1;
+        send(_cSock, (char*)&res, sizeof(LoginResult), 0);
+    }
+    break;
+    case CMD_LOGOUT:
+    {
+        recv(_cSock, szBuff + sizeof(DataHeader), sizeof(Logout) - sizeof(DataHeader), 0);
+        Logout* logout = (Logout*)szBuff;
+        std::cout << logout->UserName << std::endl;
+        //忽略判断用户密码是否正确的过程
+        LogoutResult ret;
+        send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
+    }
+    break;
+    default:
+        header->cmd = CMD_ERROR;
+        header->datalength = 0;
+        send(_cSock, (char*)&header, sizeof(header), 0);
+        break;
+    }
+    return 1;
 }
