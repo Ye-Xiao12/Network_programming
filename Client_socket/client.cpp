@@ -4,10 +4,13 @@
 #include<windows.h>
 #include<WinSock2.h>
 #include<iostream>
+#include<thread>
 #include<string>
 #include<string.h>
 using namespace std;
+bool g_bRun = true;
 int processor(SOCKET _sock);
+void cmdThread(SOCKET _sock);    //输入线程
 
 //请求类型
 enum CMD {
@@ -90,6 +93,9 @@ int main() {
         std::cout << "连接成功..." << std::endl;
     }
 
+    std::thread t1(cmdThread, _sock);
+    t1.detach();
+
     while (true) {
         fd_set fdReads;
         FD_ZERO(&fdReads);
@@ -106,14 +112,8 @@ int main() {
                 break;
             }
         }
-
         Sleep(1000);
-        std::cout << "空闲时间，处理client其他任务..." << std::endl;
-        Login login;
-        strcpy(login.UserName, "xiaoqing");
-        strcpy(login.PassWord, "12345678");
-        send(_sock, (const char*)&login, sizeof(Login),0);
-        std::cout << "空闲时间，处理client其他任务..." << std::endl;
+        //std::cout << "空闲时间，处理client其他任务..." << std::endl;
     }
     // 关闭socket
     closesocket(_sock);
@@ -156,4 +156,32 @@ int processor(SOCKET _sock) {
         break;
     }
     return 1;
+}
+
+//客户端输入线程
+void cmdThread(SOCKET _sock) {
+    while (true) {
+        string cmdBuf;
+        std::cout << "请输入命令：" << std::endl;
+        cin >> cmdBuf;
+        if (cmdBuf == "exit") {
+            g_bRun = false;
+            std::cout << "推出cmdThread线程..." << std::endl;
+            break;
+        }
+        else if (cmdBuf == "login") {
+            Login login;
+            strcpy(login.UserName, "ZhangSan");
+            strcpy(login.PassWord, "12345678");
+            send(_sock, (const char*)&login, sizeof(Login), 0);
+        }
+        else if (cmdBuf == "logout") {
+            Logout logout;
+            strcpy(logout.UserName, "LiSi");
+            send(_sock, (const char*)&logout, sizeof(Logout), 0);
+        }
+        else {
+            std::cout << "不支持该命令..." << std::endl;
+        }
+    }
 }
