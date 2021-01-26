@@ -7,6 +7,7 @@
 #include<string>
 #include<string.h>
 using namespace std;
+int processor(SOCKET _sock);
 
 //请求类型
 enum CMD {
@@ -15,6 +16,7 @@ enum CMD {
     CMD_LOGOUT,
     CMD_LOGOUT_RESULT,
     CMD_ERROR,
+    CMD_NEW_USER_JOIN,
 };
 //报头
 struct DataHeader {
@@ -59,11 +61,19 @@ struct LogoutResult : public DataHeader {
     int result;
 };
 
+struct NewUserJoin :public DataHeader {
+    NewUserJoin() {
+        datalength = sizeof(NewUserJoin);
+        cmd = CMD_NEW_USER_JOIN;
+        this->scok = 0;
+    }
+    int scok;
+};
+
 int main() {
     WORD var = MAKEWORD(2, 3);
     WSADATA dat;
     WSAStartup(var, &dat);
-    //
     //创建一个socket
     SOCKET _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     //绑定端口号(服务器端口)
@@ -81,42 +91,69 @@ int main() {
     }
 
     while (true) {
-        //向服务端发送请求
-        std::string cmdBuf;
-        std::cout << "请输入命令";
-        std::cin >> cmdBuf;
+        fd_set fdReads;
+        FD_ZERO(&fdReads);
+        FD_SET(_sock, &fdReads);
+        timeval t = { 0,0 };
+        int ret = select(_sock, &fdReads, 0, 0, &t);
+        if (ret < 0) {
+            std::cout << "select任务结束..." << std::endl;
+        }
+        if (FD_ISSET(_sock, &fdReads)) {
+            FD_CLR(_sock, &fdReads);
+            if (-1 == processor(_sock)) {
+                std::cout << "select 任务结束..." << std::endl;
+                break;
+            }
+        }
 
-        if (cmdBuf == "exit") {
-            std::cout << "收到exit命令，任务结束" << std::endl;
-        }
-        else if (cmdBuf == "login") {
-            Login login;
-            strcpy(login.UserName, "XiaoMing");
-            strcpy(login.PassWord, "12345678");
-            //向服务器发送请求
-            send(_sock, (const char*)&login, login.datalength, 0);
-            //接收服务器返回数据
-            LoginResult loginResult;
-            recv(_sock, (char*)&loginResult, sizeof(LoginResult), 0);
-            std::cout << loginResult.result << std::endl;
-        }
-        else if (cmdBuf == "logout") {
-            Logout logout;
-            strcpy(logout.UserName,"大乌龟");
-            //向服务器发送请求命令
-            send(_sock, (char*)&logout, logout.datalength, 0);
-            //接收服务器命令
-            LogoutResult logoutRet;
-            recv(_sock, (char*)&logoutRet, sizeof(LogoutResult), 0);
-            std::cout << logoutRet.result << std::endl;
-        }
-        else {
-            std::cout << "不支持命令，请重新输入：" << std::endl;
-        }
+        Sleep(1000);
+        std::cout << "空闲时间，处理client其他任务..." << std::endl;
+        Login login;
+        strcpy(login.UserName, "xiaoqing");
+        strcpy(login.PassWord, "12345678");
+        send(_sock, (const char*)&login, sizeof(Login),0);
+        std::cout << "空闲时间，处理client其他任务..." << std::endl;
     }
     // 关闭socket
     closesocket(_sock);
     //清除windows socket环境
     WSACleanup();
     return 0;
+}
+
+int processor(SOCKET _sock) {
+    //向服务端发送请求
+    char recvBuf[1024];
+    int ret = recv(_sock, recvBuf, sizeof(DataHeader),0);
+    DataHeader* dh = (DataHeader*)recvBuf;
+
+    if (ret < 0) {
+        std::cout << "收到exit命令，任务结束" << std::endl;
+        return -1;
+    }
+    switch (dh->cmd) {
+    case CMD_LOGIN_RESULT:
+    {
+        recv(_sock, recvBuf + sizeof(DataHeader), sizeof(LoginResult) - sizeof(DataHeader), 0);
+        LoginResult* login = (LoginResult*)recvBuf;
+        std::cout << "接收到服务端信息: LoginResult" << std::endl;
+    }
+        break;
+    case CMD_LOGOUT_RESULT:
+    {
+        recv(_sock, recvBuf + sizeof(DataHeader), sizeof(LogoutResult) - sizeof(DataHeader), 0);
+        LogoutResult* logout = (LogoutResult*)recvBuf;
+        std::cout << "接收到服务端信息: LogoutResult" << std::endl;
+    }
+        break;
+    case CMD_NEW_USER_JOIN:
+    {
+        recv(_sock, recvBuf + sizeof(DataHeader), sizeof(NewUserJoin) - sizeof(DataHeader), 0);
+        NewUserJoin* userJoin = (NewUserJoin*)recvBuf;
+        std::cout << "新加入一个玩家..." << std::endl;
+    }
+        break;
+    }
+    return 1;
 }

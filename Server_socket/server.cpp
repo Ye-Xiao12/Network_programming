@@ -18,6 +18,7 @@ enum CMD {
     CMD_LOGOUT,
     CMD_LOGOUT_RESULT,
     CMD_ERROR,
+    CMD_NEW_USER_JOIN,
 };
 //报头
 struct DataHeader {
@@ -62,6 +63,15 @@ struct LogoutResult : public DataHeader {
     int result;
 };
 
+struct NewUserJoin :public DataHeader {
+    NewUserJoin() {
+        datalength = sizeof(NewUserJoin);
+        cmd = CMD_NEW_USER_JOIN;
+        this->scok = 0;
+    }
+    int scok;
+};
+
 int main() {
     WORD var = MAKEWORD(2, 3);
     WSADATA dat;
@@ -92,26 +102,19 @@ int main() {
 
     while (true) {
         fd_set fdRead;
-        fd_set fdWrite;
-        fd_set fdExp;
         //FD_ZERO 宏定义，为所有fd_set.count置0
         FD_ZERO(&fdRead);
-        FD_ZERO(&fdWrite);
-        FD_ZERO(&fdExp);
         //FD_SEt 宏定义，将fd数组中的首个元素置为_sock
         FD_SET(_sock, &fdRead);
-        FD_SET(_sock, &fdWrite);
-        FD_SET(_sock, &fdExp);
         //将g_client数组中所有SOCKET放入对应集合
         for (int n = (int)g_client.size() - 1; n >= 0; --n) {
             FD_SET(g_client[n], &fdRead);
-            FD_SET(g_client[n], &fdWrite);
-            FD_SET(g_client[n], &fdExp);
         }
         //nfds是一个整数值，是指fd_set集合中（SOCKET）描述符范围
         //nfds在windows中不生效
-        //最后一个等待时间
-        int ret = select(_sock + 1, &fdRead, &fdWrite, &fdExp, NULL);
+        //最后一个等待时间,若为NULL,则为select模式
+        timeval t = { 0,0 };
+        int ret = select(_sock + 1, &fdRead, 0, 0, &t);
         if (ret < 0) {
             std::cout << "select 任务结束..." << std::endl;
             break;
@@ -128,8 +131,14 @@ int main() {
             if (INVALID_SOCKET == _cSock) {
                 std::cout << "ERROR,接收到错误的客户端..." << std::endl;
             }
-            g_client.push_back(_cSock);
-            std::cout << "新客户端加入：socket: " << (int)_cSock << " ,Ip=" << inet_ntoa(clientAddr.sin_addr) << std::endl;
+            else {
+                NewUserJoin userjoin;
+                for (size_t i = 0; i < g_client.size(); ++i) {
+                    send(g_client[i], (const char*)&userjoin, sizeof(NewUserJoin), 0);
+                }
+                g_client.push_back(_cSock);
+                std::cout << "新客户端加入：socket: " << (int)_cSock << " ,Ip=" << inet_ntoa(clientAddr.sin_addr) << std::endl;
+            }
         }
 
         //检查每个_cSock，是否有recv任务
@@ -137,10 +146,14 @@ int main() {
         for (size_t i = 0; i < fdRead.fd_count; ++i) {
             if (-1 == processor(fdRead.fd_array[i])) {
                 vector<SOCKET>::iterator it = find(g_client.begin(), g_client.end(), fdRead.fd_array[i]);
-                    if (it != g_client.end()) 
-                        g_client.erase(it);
+                if (it != g_client.end()) {
+                    g_client.erase(it);
+                    std::cout << "断开连接：socket: " << *it << std::endl;
+                }
             }
-        }   
+        }  
+        Sleep(300);
+        std::cout << "服务器处理其他空闲任务..." << std::endl;
     }
 
     //关闭socket
