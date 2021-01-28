@@ -1,8 +1,16 @@
-#define WIN32_LEAN_AND_MEAN
-#define _CRT_SECURE_NO_WARNINGS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS 
-#include<windows.h>
-#include<WinSock2.h>
+#ifdef _WIN32   //windwows操作系统下
+    #define WIN32_LEAN_AND_MEAN
+    #define _CRT_SECURE_NO_WARNINGS
+    #define _WINSOCK_DEPRECATED_NO_WARNINGS 
+    #include<windows.h>
+    #include<WinSock2.h>
+#else
+    #include<unistd.h>  //unix std
+    #include<arpa/inet.h>
+    #define SOCKET int
+    #define INVALID_SOCKET  (SOCKET)(~0)
+    #define SOCKET_ERROR            (-1)
+#endif
 #include<iostream>
 #include<thread>
 #include<string>
@@ -74,16 +82,22 @@ struct NewUserJoin :public DataHeader {
 };
 
 int main() {
+#ifdef _WIN32
     WORD var = MAKEWORD(2, 3);
     WSADATA dat;
     WSAStartup(var, &dat);
+#endif
     //创建一个socket
     SOCKET _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     //绑定端口号(服务器端口)
     sockaddr_in _sin = {};
     _sin.sin_family = AF_INET;
-    _sin.sin_port = htons(4567);
-    _sin.sin_addr.S_un.S_addr = inet_addr("127.0.0.1");
+    _sin.sin_port = htons(4563);
+#ifdef _WIN32
+    _sin.sin_addr.S_un.S_addr = inet_addr("192.168.199.39");
+#else
+    _sin.sin_addr.s_addr = inet_addr("192.168.199.33");
+#endif
     //连接服务器
     int ret = connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr));
     if (SOCKET_ERROR == ret) {
@@ -112,20 +126,28 @@ int main() {
                 break;
             }
         }
+#ifdef _WIN32
         Sleep(1000);
+#else
+        sleep(10);
+#endif
         //std::cout << "空闲时间，处理client其他任务..." << std::endl;
     }
+#ifdef _WIN32
     // 关闭socket
     closesocket(_sock);
     //清除windows socket环境
     WSACleanup();
+#else
+    close(_sock);
+#endif
     return 0;
 }
 
+//向服务端发送请求
 int processor(SOCKET _sock) {
-    //向服务端发送请求
     char recvBuf[1024];
-    int ret = recv(_sock, recvBuf, sizeof(DataHeader),0);
+    int ret = recv(_sock, recvBuf, sizeof(DataHeader), 0);
     DataHeader* dh = (DataHeader*)recvBuf;
 
     if (ret < 0) {
@@ -139,21 +161,21 @@ int processor(SOCKET _sock) {
         LoginResult* login = (LoginResult*)recvBuf;
         std::cout << "接收到服务端信息: LoginResult" << std::endl;
     }
-        break;
+    break;
     case CMD_LOGOUT_RESULT:
     {
         recv(_sock, recvBuf + sizeof(DataHeader), sizeof(LogoutResult) - sizeof(DataHeader), 0);
         LogoutResult* logout = (LogoutResult*)recvBuf;
         std::cout << "接收到服务端信息: LogoutResult" << std::endl;
     }
-        break;
+    break;
     case CMD_NEW_USER_JOIN:
     {
         recv(_sock, recvBuf + sizeof(DataHeader), sizeof(NewUserJoin) - sizeof(DataHeader), 0);
         NewUserJoin* userJoin = (NewUserJoin*)recvBuf;
         std::cout << "新加入一个玩家..." << std::endl;
     }
-        break;
+    break;
     }
     return 1;
 }

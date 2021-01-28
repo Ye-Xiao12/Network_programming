@@ -1,8 +1,16 @@
-#define WIN32_LEAN_AND_MEAN
-#define _CRT_SECURE_NO_WARNINGS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS
-#include<windows.h>
-#include<WinSock2.h>
+#ifdef _WIN32
+    #define WIN32_LEAN_AND_MEAN
+    #define _CRT_SECURE_NO_WARNINGS
+    #define _WINSOCK_DEPRECATED_NO_WARNINGS
+    #include<windows.h>
+    #include<WinSock2.h>
+#else
+    #include<unistd.h>  //unix std
+    #include<arpa/inet.h>
+    #define SOCKET int
+    #define INVALID_SOCKET  (SOCKET)(~0)
+    #define SOCKET_ERROR            (-1)
+#endif
 #include<vector>
 #include<string.h>
 #include<iostream>
@@ -38,7 +46,7 @@ struct Login : public DataHeader {
     char PassWord[32];
 };
 //登录请求结果
-struct LoginResult : public DataHeader{
+struct LoginResult : public DataHeader {
     LoginResult() {
         datalength = sizeof(LoginResult);
         cmd = CMD_LOGIN_RESULT;
@@ -46,7 +54,7 @@ struct LoginResult : public DataHeader{
     int result;
 };
 //登出
-struct Logout : public DataHeader{
+struct Logout : public DataHeader {
     Logout() {
         datalength = sizeof(Logout);
         cmd = CMD_LOGOUT;
@@ -73,17 +81,22 @@ struct NewUserJoin :public DataHeader {
 };
 
 int main() {
+#ifdef _WIN32
     WORD var = MAKEWORD(2, 3);
     WSADATA dat;
     WSAStartup(var, &dat);
-
+#endif
     //建立一个socket套接字
     SOCKET _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     //绑定端口号
     sockaddr_in _sin = {};
     _sin.sin_family = AF_INET;
-    _sin.sin_port = htons(4567); //host to net unsigned short
+    _sin.sin_port = htons(4568); //host to net unsigned short
+#ifdef _WIN32
     _sin.sin_addr.S_un.S_addr = INADDR_ANY;
+#else
+    _sin.sin_addr.s_addr = INADDR_ANY;
+#endif
     if (SOCKET_ERROR == bind(_sock, (sockaddr*)&_sin, sizeof(_sin)))
     {
         std::cout << "ERROR: 绑定用于接受客户端失败" << std::endl;
@@ -127,7 +140,11 @@ int main() {
             sockaddr_in clientAddr = {};
             int nAddrlen = sizeof(sockaddr_in);
             SOCKET _cSock = INVALID_SOCKET;
+#ifdef _WIN32
             _cSock = accept(_sock, (sockaddr*)&clientAddr, &nAddrlen);
+#else
+            _cSock = accept(_sock, (sockaddr*)&clientAddr, (socklen_t*)&nAddrlen);
+#endif
             if (INVALID_SOCKET == _cSock) {
                 std::cout << "ERROR,接收到错误的客户端..." << std::endl;
             }
@@ -143,25 +160,35 @@ int main() {
 
         //检查每个_cSock，是否有recv任务
         //若出现异常，在集合中删除这个socket
-        for (size_t i = 0; i < fdRead.fd_count; ++i) {
-            if (-1 == processor(fdRead.fd_array[i])) {
-                vector<SOCKET>::iterator it = find(g_client.begin(), g_client.end(), fdRead.fd_array[i]);
-                if (it != g_client.end()) {
-                    g_client.erase(it);
-                    std::cout << "断开连接：socket: " << *it << std::endl;
+        for (size_t i = 0; i < g_client.size(); ++i) {
+            if (FD_ISSET(g_client[i], &fdRead)) {
+                FD_CLR(g_client[i], &fdRead);
+                if (-1 == processor(g_client[i])) {
+                    auto it = g_client.begin() + i;
+                    if (it != g_client.end())
+                        g_client.erase(it);
                 }
             }
-        }  
-        Sleep(300);
+        }
+#ifdef _WIN32
+        Sleep(1000);
+#else
+        sleep(4);
+#endif
         std::cout << "服务器处理其他空闲任务..." << std::endl;
     }
-
+#ifdef _WIN32
     //关闭socket
     for (size_t i = 0; i < g_client.size() - 1; ++i) {
         closesocket(g_client[i]);
     }
     //
     WSACleanup();
+#else
+    for (size_t i = 0; i < g_client.size() - 1; ++i) {
+        close(g_client[i]);
+    }
+#endif
     return 0;
 }
 
