@@ -77,13 +77,14 @@ int EasyTcpClient::Connect(const char* ip, unsigned short port) {
 #else
 	_sin.sin_addr.s_addr = inet_addr(ip);
 #endif
-	int ret = connect(_sock, (sockaddr*)&_sin, sizeof(sockaddr));
+	int ret = connect(_sock, (const sockaddr*)&_sin, sizeof(sockaddr));
 	if (SOCKET_ERROR == ret) {
 		std::cout << "连接服务器失败..." << std::endl;
 		return -1;
 	}
 	else {
-		std::cout << "连接服务器成功..." << std::endl;
+		std::cout << "Ip = <" << ip << ">";
+		std::cout << " Socket=<" << _sock << "> 连接服务器成功..." << std::endl;
 	}
 	return 1;
 }
@@ -105,17 +106,21 @@ bool EasyTcpClient::OnRun() {
 		fd_set fdReads;
 		FD_ZERO(&fdReads);
 		FD_SET(_sock, &fdReads);
-		timeval t = { 1,0 };
+#ifdef __linux__
+		FD_CLR(_sock, &fdReads);
+#endif
+		timeval t = { 0,0 };
 		int ret = select(_sock + 1, &fdReads, 0, 0, &t);
 		if (ret < 0) {
 			std::cout << "<socket=" << _sock << ">select任务结束" << std::endl;
+			Close();
 			return false;
 		}
-
 		if (FD_ISSET(_sock, &fdReads)) {
 			FD_CLR(_sock, &fdReads);
 			if (-1 == RecvData(_sock)) {
 				std::cout << "<socket=" << _sock << ">select任务结束" << std::endl;
+				Close();
 				return false;
 			}
 		}
@@ -169,4 +174,5 @@ int EasyTcpClient::SendData(DataHeader* header) {
 	}
 	return SOCKET_ERROR;
 }
+
 #endif

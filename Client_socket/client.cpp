@@ -16,10 +16,13 @@ int main() {
     t1.detach();
 
     while (true) {
-        client.OnRun();
+        if (!client.OnRun()) {
+            break;
+        };
     }
 
     client.Close();
+    //Sleep(10000);
     return 0;
 }
 
