@@ -1,18 +1,17 @@
 #ifndef _EASY_CONNECT_Client
 #define _EASY_CONNECT_Client
-
-#ifdef _WIN32   //windwows操作系统下
-#define WIN32_LEAN_AND_MEAN
-#define _CRT_SECURE_NO_WARNINGS
-#define _WINSOCK_DEPRECATED_NO_WARNINGS 
-#include<windows.h>
-#include<WinSock2.h>
+	#ifdef _WIN32   //windwows操作系统下
+	#define WIN32_LEAN_AND_MEAN
+	#define _CRT_SECURE_NO_WARNINGS
+	#define _WINSOCK_DEPRECATED_NO_WARNINGS 
+	#include<windows.h>
+	#include<WinSock2.h>
 #else
-#include<unistd.h>  //unix std
-#include<arpa/inet.h>
-#define SOCKET int
-#define INVALID_SOCKET  (SOCKET)(~0)
-#define SOCKET_ERROR            (-1)
+	#include<unistd.h>  //unix std
+	#include<arpa/inet.h>
+	#define SOCKET int
+	#define INVALID_SOCKET  (SOCKET)(~0)
+	#define SOCKET_ERROR            (-1)
 #endif
 #include<iostream>
 #include"Message.hpp"
