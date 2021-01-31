@@ -15,6 +15,9 @@
 #endif
 #include<iostream>
 #include"Message.hpp"
+#ifndef RECV_BUFF_SIZE
+#define RECV_BUFF_SIZE 102400
+#endif
 
 class EasyTcpClient
 {
@@ -28,12 +31,14 @@ public:
 
 	bool OnRun();	//_sock工作流程
 	bool IsRun();	//判断_sock是否占用
-	int RecvData(SOCKET _sock);	//收数据
+	int RecvData();	//收数据
 	void OnNetMsg(DataHeader* header);	//根据收到的报头，客户端做出反应
 	int SendData(DataHeader* header);	//回复消息
 private:
 	SOCKET _sock;
-	char szRecv[4096];
+	char _szRecv[RECV_BUFF_SIZE] = {};	//一级接收缓存区
+	char _szMsgBuf[RECV_BUFF_SIZE * 10] = {};	//二级接收缓存区
+	size_t _lastPtr = 0;	//指向二级接收缓存区末尾的指针
 };
 //构造函数
 EasyTcpClient::EasyTcpClient() {
@@ -117,7 +122,7 @@ bool EasyTcpClient::OnRun() {
 		}
 		if (FD_ISSET(_sock, &fdReads)) {
 			FD_CLR(_sock, &fdReads);
-			if (-1 == RecvData(_sock)) {
+			if (-1 == RecvData()) {
 				std::cout << "<socket=" << _sock << ">select任务结束" << std::endl;
 				Close();
 				return false;
@@ -132,15 +137,33 @@ bool EasyTcpClient::IsRun() {
 	return INVALID_SOCKET != _sock;
 }
 //收数据
-int EasyTcpClient::RecvData(SOCKET _sock) {
-	int nLen = recv(_sock, szRecv, sizeof(DataHeader), 0);
-	DataHeader* dh = (DataHeader*)szRecv;
+int EasyTcpClient::RecvData() {
+	int nLen = recv(_sock, _szRecv, RECV_BUFF_SIZE, 0);
 	if (nLen <= 0) {
+		std::cout << "socket<" << _sock << ">";
 		std::cout << "与服务器断开连接，任务结束" << std::endl;
 		return -1;
 	}
-	recv(_sock, szRecv + dh->datalength, dh->datalength - sizeof(DataHeader), 0);
-	OnNetMsg(dh);
+	//将接收到的数据拷贝到消息缓存区
+	memcpy(_szMsgBuf + _lastPtr, _szRecv, nLen);
+	//消息缓存区数据尾部指针后移
+	_lastPtr += nLen;
+	//判断消息缓存区的数据长度是否大于消息头的长度
+	while (_lastPtr >= sizeof(DataHeader)) {
+		DataHeader* header = (DataHeader*)_szMsgBuf;
+		//判断消息缓冲区的数据长度是否大于消息长度
+		if (_lastPtr >= header->datalength) {
+			int nSize = _lastPtr - header->datalength;
+			//处理网络消息
+			OnNetMsg(header); 
+			//消息缓冲区剩余未处理数据前移
+			memcpy(_szMsgBuf, _szMsgBuf + header->datalength, nSize);
+			_lastPtr = nSize;
+		}
+		else {//剩余消息缓存区不够一条完整信息
+			break;
+		}
+	}
 	return 0;
 }
 //根据收到的报头，客户端做出反应
@@ -148,20 +171,25 @@ void EasyTcpClient::OnNetMsg(DataHeader* header) {
 	switch (header->cmd) {
 	case CMD_LOGIN_RESULT:
 	{
-		LoginResult* login = (LoginResult*)szRecv;
+		LoginResult* login = (LoginResult*)_szRecv;
 		std::cout << "接收到服务端信息: LoginResult" << std::endl;
 	}
 	break;
 	case CMD_LOGOUT_RESULT:
 	{
-		LogoutResult* logout = (LogoutResult*)szRecv;
+		LogoutResult* logout = (LogoutResult*)_szRecv;
 		std::cout << "接收到服务端信息: LogoutResult" << std::endl;
 	}
 	break;
 	case CMD_NEW_USER_JOIN:
 	{
-		NewUserJoin* userJoin = (NewUserJoin*)szRecv;
+		NewUserJoin* userJoin = (NewUserJoin*)_szRecv;
 		std::cout << "新加入一个玩家..." << std::endl;
+	}
+	break;
+	default:
+	{
+		std::cout << "不属于任何信息..." << std::endl;
 	}
 	break;
 	}

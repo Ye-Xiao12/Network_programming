@@ -15,11 +15,11 @@ int main() {
         server.OnRun();
 
 #ifdef _WIN32
-        Sleep(3000);
+        //Sleep(3000);
 #else
         sleep(4);
 #endif
-        std::cout << "服务器处理其他空闲任务..." << std::endl;
+        //std::cout << "服务器处理其他空闲任务..." << std::endl;
     }
     server.Close();
     return 0;

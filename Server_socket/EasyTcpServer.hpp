@@ -18,6 +18,10 @@
 #include<vector>
 #include"Message.hpp"
 
+#ifndef RECV_BUFF_SIZE
+#define RECV_BUFF_SIZE 102400
+#endif
+
 class EasyTcpServer {
 public:
 	EasyTcpServer();
@@ -32,6 +36,7 @@ public:
 	bool isRun();	//判断_sock是否在工作中
 	void OnRun();	//工作中
 	int SendData(SOCKET _cSock,DataHeader* header);	//向客户端发送数据
+	virtual void OnNetMsg(DataHeader* header);
 private:
 	SOCKET _sock;
 	std::vector<SOCKET>g_client;
@@ -125,35 +130,14 @@ int EasyTcpServer::RecvData(SOCKET _cSock) {
 		return -1;
 	}
 	DataHeader* header = (DataHeader*)szBuff;
-	switch (header->cmd) {
-	case CMD_LOGIN:
-	{
-		//类内元素存放位置应该是按照类的声明顺序存放在内存中存放
-		recv(_cSock, szBuff + sizeof(DataHeader), sizeof(Login) - sizeof(DataHeader), 0);
-		Login* login = (Login*)szBuff;
-		std::cout << login->UserName << "  " << login->PassWord << std::endl;
-		//处理部分
-		LoginResult res;
-		res.result = 1;
-		send(_cSock, (char*)&res, sizeof(LoginResult), 0);
-	}
-	break;
-	case CMD_LOGOUT:
-	{
-		recv(_cSock, szBuff + sizeof(DataHeader), sizeof(Logout) - sizeof(DataHeader), 0);
-		Logout* logout = (Logout*)szBuff;
-		std::cout << logout->UserName << std::endl;
-		//忽略判断用户密码是否正确的过程
-		LogoutResult ret;
-		send(_cSock, (char*)&ret, sizeof(LogoutResult), 0);
-	}
-	break;
-	default:
-		header->cmd = CMD_ERROR;
-		header->datalength = 0;
-		send(_cSock, (char*)&header, sizeof(header), 0);
-		break;
-	}
+	//把剩余的消息也接收掉
+	recv(_cSock, szBuff + sizeof(DataHeader), header->datalength - sizeof(DataHeader), 0);
+	
+	LoginResult* logResult = new LoginResult;
+	DataHeader* dp = (DataHeader*)logResult;
+	SendData(_cSock, dp);
+
+	OnNetMsg(header);
 	return 1;
 }
 //接受客户端的连接
@@ -220,8 +204,8 @@ void EasyTcpServer::OnRun() {
 		//检查每个端口，删除异常端口
 		for (size_t i = 0; i < g_client.size(); ++i) {
 			if (FD_ISSET(g_client[i], &fdReads)) {
-				FD_CLR(g_client[i], &fdReads);
 				if (-1 == RecvData(g_client[i])) {
+					FD_CLR(g_client[i], &fdReads);
 					auto it = g_client.begin() + i;
 					if (it != g_client.end())
 						g_client.erase(it);
@@ -231,5 +215,27 @@ void EasyTcpServer::OnRun() {
 		}
 	}
 }
-
+void EasyTcpServer::OnNetMsg(DataHeader* header) {
+	switch (header->cmd) {
+	case CMD_LOGIN:
+	{
+		//类内元素存放位置应该是按照类的声明顺序存放在内存中存放
+		Login* login = (Login*)header;
+		std::cout << "收到login消息...";
+		std::cout << login->UserName << "  " << login->PassWord << std::endl;
+	}
+	break;
+	case CMD_LOGOUT:
+	{
+		Logout* logout = (Logout*)header;
+		std::cout << "收到logout消息..." << std::endl;
+	}
+	break;
+	default:
+	{
+		std::cout << "收到信息不属于任何类别..." << std::endl;
+	}
+		break;
+	}
+}
 #endif
