@@ -1,4 +1,4 @@
-#c++高并发网络编程  项目笔记  
+# c++高并发网络编程  项目笔记  
 1.Socket 编程  
 服务端：1.创建socket()  2.绑定端口 bind()  3.监听端口 listen()  4.接受连接 accept()  5.接收数据 recv()  6.发送数据 send()  7.关闭端口 close();  
 客户端：1.创建socket()  2.连接服务器 connect()  3.接收数据 recv()  4.发送数据 send()  5.关闭连接 close()  
