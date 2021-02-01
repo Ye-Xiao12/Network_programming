@@ -11,7 +11,7 @@
  - FD_ZERO(&fdReads):将待观察数组fdReads清空
 fdReads数组实现方式在windows和linux中有所区别，windows是由数组中元素个count及数组array组成，linux中由指针实现  
 ### select模式原理：  
-  函数参数：select(max_sock+1,&fdReads,&fdWrites,&fdExcept,flag)。轮询检查对应数组中的文件是否有待处理文件，有则将对应文件标识符值为true，从而实现非阻塞网络模式。在windows中最大文件数为64，在linux中最大文件树1024，这也是select模式中网络的最大连接数。
+  函数参数：select(max_sock+1,&fdReads,&fdWrites,&fdExcept,flag)。轮询检查对应数组中的文件是否有待处理文件，有则将对应文件标识符值为true，从而实现非阻塞网络模式。在windows中最大文件数为64(可通过修改FD_SETSIZE这个宏定义来修改可支持的最大文件数)，在linux中最大文件数1024（无法修改，若要突破这个值，只能使用epoll模式），这也是select模式中网络的最大连接数。
   
 ## 3.粘包，少包  
  - 产生原因：高吞吐量下服务器缓存已经占满，服务器处理速度跟不上接收信息速度。  
