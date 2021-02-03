@@ -17,9 +17,10 @@
 #include<iostream>
 #include<vector>
 #include"Message.hpp"
+#include"CELLTimestamp.hpp"
 
 #ifndef RECV_BUFF_SIZE
-#define RECV_BUFF_SIZE 102400
+#define RECV_BUFF_SIZE 10240
 #endif
 
 class ClientSocket {
@@ -72,6 +73,8 @@ private:
 	SOCKET _sock;
 	char _szRecv[RECV_BUFF_SIZE] = {};
 	std::vector<ClientSocket *>_gClient;
+	int _numMessage;	//服务器处理报文条数
+	CELLTimestamp _Time;	//计算时间的类
 };
 //构造函数
 EasyTcpServer::EasyTcpServer() {
@@ -196,11 +199,11 @@ SOCKET EasyTcpServer::Accept() {
 		std::cout << "ERROR,接收到错误的客户端..." << std::endl;
 	}
 	else {
-		NewUserJoin userjoin;
-		SendDataToAll(&userjoin);
+		//NewUserJoin userjoin;
+		//SendDataToAll(&userjoin);
 		_gClient.push_back(new ClientSocket(cSock));
-		std::cout << "新客户端加入：socket: " << (int)cSock;
-		std::cout << " ,Ip=" << inet_ntoa(clientAddr.sin_addr) << std::endl;
+		//std::cout << "新客户端加入：socket: " << (int)cSock;
+		//std::cout << " ,Ip=" << inet_ntoa(clientAddr.sin_addr) << std::endl;
 	}
 	return cSock;
 }
@@ -250,8 +253,8 @@ bool EasyTcpServer::OnRun() {
 		//检查每个端口，删除异常端口
 		for (size_t i = 0; i < _gClient.size(); ++i) {
 			if (FD_ISSET(_gClient[i]->sockfd(), &fdReads)) {
+				FD_CLR(_gClient[i]->sockfd(), &fdReads);
 				if (-1 == RecvData(_gClient[i])) {
-					FD_CLR(_gClient[i]->sockfd(), &fdReads);
 					auto it = _gClient.begin() + i;
 					if (it != _gClient.end()) {
 						delete _gClient[i];
@@ -266,13 +269,23 @@ bool EasyTcpServer::OnRun() {
 	return false;
 }
 void EasyTcpServer::OnNetMsg(DataHeader* header) {
+	//计算服务器每秒接收报文数量
+	++_numMessage;
+	double t1 = _Time.getElapsedSecond();
+	if (t1 >= 1.0) {
+		printf("time:<%lf>; socket<%d>", t1,_sock);
+		std::cout << " Client Size:<" << _gClient.size() << ">" << " recvMessage:<" << _numMessage << ">" << std::endl;
+		_numMessage = 0;
+		_Time.update();
+	}
+
 	switch (header->cmd) {
 	case CMD_LOGIN:
 	{
 		//类内元素存放位置应该是按照类的声明顺序存放在内存中存放
 		Login* login = (Login*)header;
-		std::cout << "收到login消息...";
-		std::cout << login->UserName << "  " << login->PassWord << std::endl;
+		/*std::cout << "收到login消息...";
+		std::cout << login->UserName << "  " << login->PassWord << std::endl;*/
 	}
 	break;
 	case CMD_LOGOUT:

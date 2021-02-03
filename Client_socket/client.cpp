@@ -1,3 +1,7 @@
+#ifndef FD_SETSIZE
+#define FD_SETSIZE      1024
+#endif
+
 #include"EasyTcyClient.hpp"
 #include<iostream>
 #include<thread>
@@ -8,7 +12,7 @@ bool g_bRun = true;
 void cmdThread();    // ‰»Îœﬂ≥Ã
 
 int main() {
-    const int cCount = FD_SETSIZE;
+    const int cCount = FD_SETSIZE - 1;
     EasyTcpClient* client[cCount];
     for (int i = 0; i < cCount; ++i) {
         client[i] = new EasyTcpClient;

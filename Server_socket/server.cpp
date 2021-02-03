@@ -1,3 +1,7 @@
+#ifndef FD_SETSIZE
+#define FD_SETSIZE      10001
+#endif
+
 #include"EasyTcpServer.hpp"
 #include<vector>
 #include<string.h>
@@ -13,7 +17,6 @@ int main() {
    
     while (true) {
         server.OnRun();
-        //std::cout << "服务器处理其他空闲任务..." << std::endl;
     }
     server.Close();
     return 0;

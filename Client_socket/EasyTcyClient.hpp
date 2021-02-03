@@ -15,8 +15,9 @@
 #endif
 #include<iostream>
 #include"Message.hpp"
+
 #ifndef RECV_BUFF_SIZE
-#define RECV_BUFF_SIZE 102400
+#define RECV_BUFF_SIZE 10240
 #endif
 
 class EasyTcpClient
