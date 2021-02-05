@@ -67,7 +67,7 @@ void EasyTcpClient::InitSocket() {
 		std::cout << "Error! 创建套接字失败" << std::endl;
 	}
 	else {
-		std::cout << "成功创建Socket..." << std::endl;
+		//printf("成功创建Socket...\n");
 	}
 }
 
@@ -84,12 +84,11 @@ int EasyTcpClient::Connect(const char* ip, unsigned short port) {
 #endif
 	int ret = connect(_sock, (const sockaddr*)&_sin, sizeof(sockaddr));
 	if (SOCKET_ERROR == ret) {
-		std::cout << "连接服务器失败..." << std::endl;
+		printf("连接服务器失败...\n");
 		return -1;
 	}
 	else {
-		std::cout << "Ip = <" << ip << ">";
-		std::cout << " Socket=<" << _sock << "> 连接服务器成功..." << std::endl;
+		printf("Ip=<%s>	Socket=<%d>	连接服务器成功...\n", ip, _sock);
 	}
 	return 1;
 }
