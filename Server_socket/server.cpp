@@ -14,6 +14,7 @@ int main() {
     server.InitSocket();
     server.Bind(NULL, 4568);
     server.Listen(5);
+    server.Start(4);
    
     while (true) {
         server.OnRun();
