@@ -245,6 +245,7 @@ bool CellServer::onRun() {
 						delete _clients[i];
 						_clients.erase(it);
 					}
+					_pNetEvent->OnLeave(*it);
 					break;	//一次只删除一个socket
 				}
 			}
@@ -283,6 +284,7 @@ private:
 	char _szRecv[RECV_BUFF_SIZE] = {};
 	std::vector<ClientSocket*>_clients;	//存储目前所有连接客户端
 	std::vector<CellServer*>_cellServer;
+	std::mutex _mutex;
 	CELLTimestamp _Time;	//计算时间的类
 };
 //构造函数
@@ -441,7 +443,9 @@ int EasyTcpServer::SendData(SOCKET _cSock, DataHeader* header) {
 }
 //向当前连接的所有客户端发送数据
 void EasyTcpServer::SendDataToAll(DataHeader* header) {
-	
+	for (auto client : _clients) {
+		send(client->sockfd(), (const char*)header, header->datalength, 0);
+	}
 }
 //判断_sock是否在工作中
 bool EasyTcpServer::isRun()
@@ -488,6 +492,7 @@ void EasyTcpServer::timePerMsg() {
 }
 //删除指定客户端
 void EasyTcpServer::OnLeave(ClientSocket* pClient) {
+	std::lock_guard<std::mutex>lock(_mutex);
 	auto it = find(_clients.begin(), _clients.end(), pClient);
 	_clients.erase(it);
 }
