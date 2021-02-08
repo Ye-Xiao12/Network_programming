@@ -14,7 +14,7 @@ int main() {
     server.InitSocket();
     server.Bind(NULL, 4568);
     server.Listen(5);
-    server.Start(4);
+    server.Start(4);    //创建4个处理报文的线程
    
     while (true) {
         server.OnRun();
