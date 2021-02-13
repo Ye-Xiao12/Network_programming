@@ -31,11 +31,18 @@ fdReads数组实现方式在windows和linux中有所区别，windows是由数组
 	纯虚函数：void fun() = 0; 不具备函数的功能，不能被调用，它只是通知编译器这里声明一个纯虚函数，留待派生类中定义  
   
 ## 6.git的一些操作  
+### git的一些基本操作  
  - git add filename : 将某个文件提交到暂存区  
  - git commit -m "修改注释"  : 将修改代码提交到本地仓库  
  - git push : 将代码提交到远程仓库  
  - git log : 显示所有修改的版本记录  
+ - git reset -- hard 版本号 : 代码回退到某个版本号  git reset --hard HEAD^ : 回退到上个版本的代码
+### git分支管理  
  - git branch : 显示所有当前分支  
- - git branch newbranch : 创建当前分支  
- - git checkout newbranch : 将当前默认分支转换到新的分支  
- - git merge newbranch : 前提是先切换到主分支，再将某个分支的代码合并到主分支
+ - git branch dev : 创建该名字的分支  
+ - git push origin dev 或者 git branch --set-upstream-to=origin/dev : 将当前新创建的分支更新到远程仓库  
+ - git branch -d dev : 删除dev分支  
+ - git push origin :dev : 删除dev分支，前面的冒号表示删除
+ - git checkout dev : 将当前默认分支转换到新的分支  
+ - git merge dev : 前提是先切换到主分支，再将某个分支的代码合并到主分支  
+
