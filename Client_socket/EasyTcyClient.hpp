@@ -35,6 +35,7 @@ public:
 	int RecvData();	//收数据
 	void OnNetMsg(DataHeader* header);	//根据收到的报头，客户端做出反应
 	int SendData(DataHeader* header);	//回复消息
+	int SendData(DataHeader* header, int n);	//回复n条消息
 private:
 	SOCKET _sock;
 	char _szRecv[RECV_BUFF_SIZE] = {};	//一级接收缓存区
@@ -198,6 +199,13 @@ void EasyTcpClient::OnNetMsg(DataHeader* header) {
 int EasyTcpClient::SendData(DataHeader* header) {
 	if (IsRun() && header) {
 		return send(_sock, (const char*)header, header->datalength, 0);
+	}
+	return SOCKET_ERROR;
+}
+//回复n条消息
+int EasyTcpClient::SendData(DataHeader* header, int n) {
+	if (IsRun() && header) {
+		return send(_sock, (const char*)header, header->datalength * n, 0);
 	}
 	return SOCKET_ERROR;
 }
