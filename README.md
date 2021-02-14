@@ -45,4 +45,6 @@ fdReads数组实现方式在windows和linux中有所区别，windows是由数组
  - git push origin :dev : 删除dev分支，前面的冒号表示删除
  - git checkout dev : 将当前默认分支转换到新的分支  
  - git merge dev : 前提是先切换到主分支，再将某个分支的代码合并到主分支  
+ ## 7.TCP三次握手和四次挥手  
+ ![image](https://github.com/Ye-Xiao12/network_programming/blob/master/picture/%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B.svg)
 
