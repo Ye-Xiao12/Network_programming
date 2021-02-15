@@ -1,6 +1,6 @@
 # c++高并发网络编程  项目笔记    
 ## 高性能服务器基本框架
-![image](./picture/%E9%AB%98%E6%80%A7%E8%83%BD%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A1%86%E6%9E%B6.svg)  
+![image](./Picture/%E9%AB%98%E6%80%A7%E8%83%BD%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%A1%86%E6%9E%B6.svg)  
 ## 1.Socket 编程  
 - 服务端：1.创建socket()  2.绑定端口 bind()  3.监听端口 listen()  4.接受连接 accept()  5.接收数据 recv()  6.发送数据 send()  7.关闭端口 close();  
 - 客户端：1.创建socket()  2.连接服务器 connect()  3.接收数据 recv()  4.发送数据 send()  5.关闭连接 close()  
@@ -48,7 +48,7 @@ fdReads数组实现方式在windows和linux中有所区别，windows是由数组
  - git checkout dev : 将当前默认分支转换到新的分支  
  - git merge dev : 前提是先切换到主分支，再将某个分支的代码合并到主分支  
  ## 7.TCP三次握手和四次挥手  
- ![image](./picture/%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B.svg)  
+ ![image](./Picture/%E4%B8%89%E6%AC%A1%E6%8F%A1%E6%89%8B%E5%9B%9B%E6%AC%A1%E6%8C%A5%E6%89%8B.svg)  
 ### 基本概念  
 - 2个序号：  
 1.seq(sequence number) : 顺序号  
