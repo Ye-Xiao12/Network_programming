@@ -13,7 +13,8 @@
  - FD_ZERO(&fdReads):将待观察数组fdReads清空
 fdReads数组实现方式在windows和linux中有所区别，windows是由数组中元素个count及数组array组成，linux中由指针实现  
 ### select模式原理：  
-  函数参数：select(max_sock+1,&fdReads,&fdWrites,&fdExcept,flag)。轮询检查对应数组中的文件是否有待处理文件，有则将对应文件标识符值为true，从而实现非阻塞网络模式。在windows中最大文件数为64(可通过修改FD_SETSIZE这个宏定义来修改可支持的最大文件数)，在linux中最大文件数1024（无法修改，若要突破这个值，只能使用epoll模式），这也是select模式中网络的最大连接数。
+  函数参数：select(max_sock+1,&fdReads,&fdWrites,&fdExcept,flag)。轮询检查对应数组中的文件是否有待处理文件，有则将对应文件标识符值为true，从而实现非阻塞网络模式。在windows中最大文件数为64(可通过修改FD_SETSIZE这个宏定义来修改可支持的最大文件数)，在linux中最大文件数1024（无法修改，若要突破这个值，只能使用epoll模式），这也是select模式中网络的最大连接数(注：linux中的select有巨大的坑，即使是使用多线程也无法突破最大连接数，多进程可以，暂时无法解决，先做个标记)。
+   - linux 下的文件描述符（file descriptor） 一个linux进程启动后，会在内核创建一个进程控制块（PCB process Control Block），PCB内部有一个文件描述符表（File descriptor table）,文件描述符（索引）就是文件描述附表这个数组的下标，数组的内容就是指向一个个打开文件的指针(程序对文件的所有操作都依赖这个指针)。同时还规定系统刚启动时，0是标准输入，1是标准输出，2是标准呢错误，这意味着如果打开一个新文件，描述符是从3开始的，并依次递增...
   
 ## 3.粘包，少包  
  - 产生原因：高吞吐量下服务器缓存已经占满，服务器处理速度跟不上接收信息速度。  
