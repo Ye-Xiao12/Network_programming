@@ -26,7 +26,12 @@ fdReads数组实现方式在windows和linux中有所区别，windows是由数组
  - 原子操作：cpu运算中不可分割的操作，一代开始除非全部完成操作，否则在cpu中不会中断来执行其他线程，其中原子操作的cpu消耗比加锁要低  
 	c++中 atomic 库    
  - 线程休眠函数：std::chrono::milliseconds t(1)    :先定义chrono库中的休眠时间  
-	            std::this_thread::sleep_for(t)     :该线程休眠t时间
+	            std::this_thread::sleep_for(t)     :该线程休眠t时间  
+ - 线程同步原语：头文件 #include<condition_variable>  condition_variable对象可用来阻塞多个线程，但必须配合std::unique_lock使用,代码示例：  
+ unique_lock<mutex>lock(m);  
+ cv.wait(lock)    //自动解锁lock,并将当前线程挂起（阻塞）  
+ ......  
+ 等待其他线程使用cv.notify_all()来解开所有被挂起的线程
   
 ## 5.C++一些基本概念    
 - 三大特性：封装，继承，多态
