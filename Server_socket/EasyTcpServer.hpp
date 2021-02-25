@@ -23,9 +23,13 @@
 #include"Message.hpp"
 #include"CELLTimestamp.hpp"
 
-#ifndef RECV_BUFF_SIZE	//	select模型最大可处理连接数
+#ifndef RECV_BUFF_SIZE	//	接受缓存区大小
 #define RECV_BUFF_SIZE 10240
 #endif
+#ifndef SEND_BUFF_SIZE	//接受缓存区大小
+#define SEND_BUFF_SIZE SEND_BUFF_SIZE
+#endif
+
 //客户socket类
 class ClientSocket {
 public:
@@ -79,6 +83,7 @@ public:
 	bool isRun();	//判断服务器sock是否正在工作中
 	bool onRun();	//主工作成员函数：消费者
 	void Start();	//用成员函数创建线程
+	int sendData(SOCKET cSock, DataHeader* header);	//用于发送数据
 private:
 	SOCKET _sock;	//服务端socket
 	bool _client_Change = false;	//标志位，如果客户端数量出现改变，则置为true
@@ -148,8 +153,8 @@ void CellServer::OnNetMsg(SOCKET cSock, DataHeader* header) {
 	{
 		//类内元素存放位置应该是按照类的声明顺序存放在内存中存放
 		Login* login = (Login*)header;
-		/*std::cout << "收到login消息...";
-		std::cout << login->UserName << "  " << login->PassWord << std::endl;*/
+		LogoutResult* loginResult = new LogoutResult;
+		sendData(cSock, loginResult);
 	}
 	break;
 	case CMD_LOGOUT:
@@ -190,6 +195,13 @@ int CellServer::RecvData(ClientSocket* pClient) {
 		}
 	}
 	return 1;
+}
+//用于发送数据
+int CellServer::sendData(SOCKET cSock, DataHeader* header) {
+	if (header) {
+		return send(cSock, (const char*)header, header->datalength, 0);
+	}
+	return SOCKET_ERROR;
 }
 //将新连接的客户端添加到客户端最少的线程中
 void CellServer::addClient(ClientSocket* pClient) {
@@ -237,7 +249,7 @@ bool CellServer::onRun() {
 			memcpy(&fdReads, &_fdRead_Back, sizeof(fd_set));
 		}
 		//select模式判断接口是否有可读消息
-		timeval t = { 0,0 };
+		timeval t = { 0,1 };
 		int ret = select(max_sock + 1, &fdReads, 0, 0, &t);
 		if (ret < 0) {
 			printf("select 任务结束...");

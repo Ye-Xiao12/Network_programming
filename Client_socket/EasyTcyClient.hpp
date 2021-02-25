@@ -173,13 +173,13 @@ void EasyTcpClient::OnNetMsg(DataHeader* header) {
 	case CMD_LOGIN_RESULT:
 	{
 		LoginResult* login = (LoginResult*)_szRecv;
-		std::cout << "接收到服务端信息: LoginResult" << std::endl;
+		//std::cout << "接收到服务端信息: LoginResult" << std::endl;
 	}
 	break;
 	case CMD_LOGOUT_RESULT:
 	{
 		LogoutResult* logout = (LogoutResult*)_szRecv;
-		std::cout << "接收到服务端信息: LogoutResult" << std::endl;
+		//std::cout << "接收到服务端信息: LogoutResult" << std::endl;
 	}
 	break;
 	case CMD_NEW_USER_JOIN:

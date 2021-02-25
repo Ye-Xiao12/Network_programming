@@ -30,6 +30,7 @@ fdReads数组实现方式在windows和linux中有所区别，windows是由数组
  - 线程同步原语：头文件 #include<condition_variable>  condition_variable对象可用来阻塞多个线程，但必须配合std::unique_lock使用,代码示例：  
  unique_lock<mutex>lock(m);  
  cv.wait(lock)    //自动解锁lock,并将当前线程挂起（阻塞）  
+ 或者 cv.wait(lock,[this]{return condition;});  这种情况下只有后面的condition为false时才会被阻塞，只有当条件为true时才会被唤醒。
  ......  
  等待其他线程使用cv.notify_all()来解开所有被挂起的线程
   
