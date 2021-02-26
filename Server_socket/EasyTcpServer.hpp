@@ -89,7 +89,7 @@ public:
 private:
 	SOCKET _sockfd;	//客户端socket编号
 	char _szMsgBuf[RECV_BUFF_SIZE] = {};	//客户端接受缓冲区
-	char _szSendBuf[SEND_BUFF_SIZE] = {};	//客户端接受缓冲区
+	char _szSendBuf[SEND_BUFF_SIZE] = {};	//客户端发送缓冲区
 	size_t _lastPtr;	//指针，指向客户端缓冲区末尾
 	size_t _lastSendPtr;	//指针，指向客户端发送缓冲区的末尾
 };
@@ -184,31 +184,11 @@ int CellServer::getClientCount() {
 }
 //对网络数据的响应
 void CellServer::OnNetMsg(ClientSocket* pClient, DataHeader* header) {
-	_recvCount++;	//原子操作
-	switch (header->cmd) {
-	case CMD_LOGIN:
-	{
-		//类内元素存放位置应该是按照类的声明顺序存放在内存中存放
-		LogoutResult* loginResult = new LogoutResult;
-		//pClient->sendData(loginResult);
-		//sendData(pClient->sockfd(), loginResult);
-	}
-	break;
-	case CMD_LOGOUT:
-	{
-		Logout* logout = (Logout*)header;
-		std::cout << "收到logout消息..." << std::endl;
-	}
-	break;
-	default:
-	{
-		std::cout << "收到信息不属于任何类别..." << std::endl;
-	}
-	break;
-	}
+	_pNetEvent->OnNetMsg(pClient, header);
 }
 //接收数据 处理粘包 拆分包
 int CellServer::RecvData(ClientSocket* pClient) {
+	_pNetEvent->OnNetRecv(pClient);
 	int nLen = recv(pClient->sockfd(), _szRecv, RECV_BUFF_SIZE, 0);
 	if (nLen <= 0) {
 		std::cout << "接收客户端<" << pClient->sockfd() << ">";
@@ -223,7 +203,7 @@ int CellServer::RecvData(ClientSocket* pClient) {
 		DataHeader* header = (DataHeader*)pClient->msgBuf();
 		if (pClient->getLastPtr() >= header->datalength) {
 			int nSize = pClient->getLastPtr() - header->datalength;
-			_pNetEvent->OnNetMsg(pClient,header);
+			OnNetMsg(pClient,header);
 			memcpy(pClient->msgBuf(), pClient->msgBuf() + header->datalength, nSize);
 			pClient->setLastPtr(nSize);
 		}
@@ -300,7 +280,6 @@ bool CellServer::onRun() {
 		for (size_t i = 0; i < _clients.size(); ++i) {
 			if (FD_ISSET(_clients[i]->sockfd(), &fdReads)) {
 				FD_CLR(_clients[i]->sockfd(), &fdReads);
-				_pNetEvent->OnNetRecv(_clients[i]);
 				if (-1 == RecvData(_clients[i])) {
 					auto it = _clients.begin() + i;
 					if (it != _clients.end()) {
@@ -349,10 +328,11 @@ public:
 	void OnNetMsg(ClientSocket* pClient, DataHeader* header);	//处理一次数据
 private:
 	SOCKET _sock;
-	std::vector<ClientSocket*>_clients;	//存储目前所有连接客户端
 	std::vector<CellServer*>_cellServer;
-	std::mutex _mutex;
 	CELLTimestamp _Time;	//计算时间的类
+protected:
+	std::mutex _mutex;
+	std::vector<ClientSocket*>_clients;	//存储目前所有连接客户端
 	std::atomic_int _msgCount;	//接收数据次数
 	std::atomic_int _recvCount;	//收到的消息总数
 	std::atomic_int _clientCount;	//客户端数量
@@ -554,6 +534,7 @@ void EasyTcpServer::OnNetJoin(ClientSocket* pClient) {
 void EasyTcpServer::OnNetRecv(ClientSocket* pClient) {
 	_msgCount++;
 }
+//处理一次数据
 void EasyTcpServer::OnNetMsg(ClientSocket* pClient, DataHeader* header) {
 	_recvCount++;
 }
