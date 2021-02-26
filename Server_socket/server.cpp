@@ -10,7 +10,7 @@ public:
 	//只会被一个线程触发 安全
 	virtual void OnNetJoin(ClientSocket* pClient);	//增加一个连接
 	virtual void OnNetLeave(ClientSocket* pClient);	//减少一个连接
-	virtual void OnNetMsg(ClientSocket* pClient, DataHeader* header);	//处理一次数据
+	virtual void OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header);	//处理一次数据
 	virtual void OnNetRecv(ClientSocket* pClient);	//接收一次数据
 private:
 };
@@ -30,7 +30,7 @@ void MyServer::OnNetLeave(ClientSocket* pClient)
 	_clientCount--;
 }
 //处理一次数据
-void MyServer::OnNetMsg(ClientSocket* pClient, DataHeader* header)
+void MyServer::OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header)
 {
 	_msgCount++;
 	switch (header->cmd)
@@ -39,18 +39,13 @@ void MyServer::OnNetMsg(ClientSocket* pClient, DataHeader* header)
 	{
 		//send recv 
 		Login* login = (Login*)header;
-		LogoutResult loginResult;
-		pClient->sendData(&loginResult);
-	//	//sendData(pClient->sockfd(), loginResult);
+		LogoutResult *loginResult = new LogoutResult();
+		pCellServer->addSendTask(pClient, loginResult);
 	}//接收 消息---处理 发送   生产者 数据缓冲区  消费者 
 	break;
 	case CMD_LOGOUT:
 	{
 		Logout* logout = (Logout*)header;
-		//printf("收到客户端<Socket=%d>请求：CMD_LOGOUT,数据长度：%d,userName=%s \n", cSock, logout->dataLength, logout->userName);
-		//忽略判断用户密码是否正确的过程
-		//LogoutResult ret;
-		//SendData(cSock, &ret);
 	}
 	break;
 	default:

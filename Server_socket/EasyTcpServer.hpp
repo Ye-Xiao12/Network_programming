@@ -20,8 +20,10 @@
 #include<thread>
 #include<mutex>
 #include<functional>
+
 #include"Message.hpp"
 #include"CELLTimestamp.hpp"
+#include"CELLTask.hpp"
 
 #ifndef RECV_BUFF_SIZE	//	接受缓存区大小
 #define RECV_BUFF_SIZE 10240
@@ -38,8 +40,13 @@ public:
 	//构造函数
 	ClientSocket(SOCKET sockfd = INVALID_SOCKET) {
 		_sockfd = sockfd;
+		//用来对申请来的内存块做初始化操作
+		//为什么没有初始化就不能用memcpy()函数操作内存？？？？
+		//这一步是关键操作！！！
 		memset(_szMsgBuf, 0, sizeof(_szMsgBuf));
+		memset(_szSendBuf, 0, sizeof(_szSendBuf));
 		_lastPtr = 0;
+		_lastSendPtr = 0;	//我擦，原来这一步才是关键操作！！！！
 	}
 	//返回该客户端socket文件标识符
 	SOCKET sockfd() {
@@ -67,7 +74,7 @@ public:
 		while (true) {
 			if (_lastSendPtr + nSendLen >= SEND_BUFF_SIZE) {
 				int nCopyLen = SEND_BUFF_SIZE - _lastSendPtr;
-				memcpy(_szSendBuf + _lastSendPtr, pSendData, nCopyLen);
+				memcpy(_szSendBuf + _lastSendPtr, pSendData, (size_t)nCopyLen);
 				//计算剩余数据
 				pSendData += nCopyLen;
 				//计算剩余数据长度
@@ -79,11 +86,14 @@ public:
 				}
 			}
 			else {
-				memcpy(_szSendBuf + _lastSendPtr, pSendData, nSendLen);
+				memcpy(_szSendBuf + _lastSendPtr, pSendData , nSendLen);
 				_lastSendPtr += nSendLen;
 				break;
 			}
 		}
+		//上面代码存在问题，暂时用下面模拟对客户端的数据发送
+		/*memcpy(_szSendBuf, pSendData, nSendLen);
+		ret = send(_sockfd, _szSendBuf, nSendLen, 0);*/
 		return ret;
 	}
 private:
@@ -100,8 +110,28 @@ public:
 	virtual void OnNetLeave(ClientSocket* pClient) = 0;	//减少一个连接
 	virtual void OnNetJoin(ClientSocket* pClient) = 0;	//增加一个连接
 	virtual void OnNetRecv(ClientSocket* pClient) = 0; //接收数据次数
-	virtual void OnNetMsg(ClientSocket* pClient, DataHeader* header) = 0;	//处理数据次数
+	virtual void OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header) = 0;	//处理数据次数
 private:
+};
+
+//网络消息发送任务
+class CellSendMsg2ClientTask :public CellTask
+{
+private:
+	ClientSocket* _pClient;
+	DataHeader* _pHeader;
+public:
+	CellSendMsg2ClientTask(ClientSocket* pClient, DataHeader* header)
+	{
+		_pClient = pClient;
+		_pHeader = header;
+	}
+	//执行任务
+	void doTask()
+	{
+		_pClient->sendData(_pHeader);
+		delete _pHeader;
+	}
 };
 
 //完成服务器端对数据处理的部分服务
@@ -114,6 +144,7 @@ public:
 	void Close();	//关闭所有客户端连接
 	int getMsgCount();	//获取处理报文数量，并将其置为0
 	int getClientCount();	//获取该线程客户端数量
+	void addSendTask(ClientSocket* pClient, DataHeader* header);	//添加任务
 	virtual void OnNetMsg(ClientSocket* pClient, DataHeader* header);	//对网络数据的响应
 	int RecvData(ClientSocket* pClient);
 	void addClient(ClientSocket* pClient);	//添加客户端：生产者
@@ -132,6 +163,7 @@ private:
 	std::atomic_int _recvCount = 0;	//处理报文数
 	INetEvent* _pNetEvent;	//使用纯虚函数，调用EasyTcpServer中的OnNetMsg(),OnLeave()成员函数，达到计数的目的
 	std::thread* _pThread;	//指向线程指针
+	CellTaskServer _taskServer;	//处理发送任务线程
 };
 //声明是可定义默认参数，定义函数时不需要重新定义默认参数
 CellServer::CellServer(SOCKET sock ) {
@@ -182,9 +214,14 @@ int CellServer::getClientCount() {
 	size_t num = _clients.size() + _clientsBuff.size();
 	return (int)num;
 }
+void CellServer::addSendTask(ClientSocket* pClient, DataHeader* header)
+{
+	CellSendMsg2ClientTask* task = new CellSendMsg2ClientTask(pClient, header);
+	_taskServer.addTask(task);
+}
 //对网络数据的响应
 void CellServer::OnNetMsg(ClientSocket* pClient, DataHeader* header) {
-	_pNetEvent->OnNetMsg(pClient, header);
+	_pNetEvent->OnNetMsg(this,pClient, header);
 }
 //接收数据 处理粘包 拆分包
 int CellServer::RecvData(ClientSocket* pClient) {
@@ -303,6 +340,7 @@ void CellServer::Start() {
 	//将成员函数转化为函数对象，使用对象指针或对象引用进行绑定
 	_pThread = new std::thread(std::mem_fn(&CellServer::onRun), this);
 	_pThread->detach();
+	_taskServer.Start();
 }
 
 class EasyTcpServer: public INetEvent {
@@ -325,7 +363,7 @@ public:
 	void OnNetLeave(ClientSocket* pClient);	//减少一个连接
 	void OnNetJoin(ClientSocket* pClient);	//增加一个连接
 	void OnNetRecv(ClientSocket* pClient); //接收数据次数
-	void OnNetMsg(ClientSocket* pClient, DataHeader* header);	//处理一次数据
+	void OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header);	//处理一次数据
 private:
 	SOCKET _sock;
 	std::vector<CellServer*>_cellServer;
@@ -535,7 +573,7 @@ void EasyTcpServer::OnNetRecv(ClientSocket* pClient) {
 	_msgCount++;
 }
 //处理一次数据
-void EasyTcpServer::OnNetMsg(ClientSocket* pClient, DataHeader* header) {
+void EasyTcpServer::OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header) {
 	_recvCount++;
 }
 #endif
