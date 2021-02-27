@@ -66,7 +66,7 @@ public:
 	}
 	//发送数据
 	int sendData(DataHeader* header) {
-		int ret = 1;
+		int ret = SOCKET_ERROR;
 		//要发送长度
 		int nSendLen = header->datalength;
 		//要发送数据
@@ -91,9 +91,6 @@ public:
 				break;
 			}
 		}
-		//上面代码存在问题，暂时用下面模拟对客户端的数据发送
-		/*memcpy(_szSendBuf, pSendData, nSendLen);
-		ret = send(_sockfd, _szSendBuf, nSendLen, 0);*/
 		return ret;
 	}
 private:
@@ -385,6 +382,9 @@ EasyTcpServer::EasyTcpServer() {
 //系构函数
 EasyTcpServer::~EasyTcpServer() {
 	Close();
+	for (auto server : _cellServer) {
+		delete server;
+	}
 }
 
 //初始化Socket
