@@ -190,7 +190,7 @@ void EasyTcpClient::OnNetMsg(DataHeader* header) {
 	break;
 	default:
 	{
-		std::cout << "不属于任何信息..." << std::endl;
+		printf("不属于任何信息...");
 	}
 	break;
 	}

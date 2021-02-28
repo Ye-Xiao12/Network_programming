@@ -39,8 +39,8 @@ void MyServer::OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHead
 	{
 		//send recv 
 		Login* login = (Login*)header;
-		LogoutResult *loginResult = new LogoutResult();
-		pCellServer->addSendTask(pClient, loginResult);
+		LogoutResult *logoutResult = new LogoutResult();
+		pCellServer->addSendTask(pClient, logoutResult);
 	}//接收 消息---处理 发送   生产者 数据缓冲区  消费者 
 	break;
 	case CMD_LOGOUT:

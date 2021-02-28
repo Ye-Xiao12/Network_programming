@@ -8,8 +8,8 @@
 #include<string.h>
 using namespace std;
 bool g_bRun = true;
-const int cCount = 4000;    //模拟客户端数目
-const int tCount = 4;   //线程数
+const int cCount = 1000;    //模拟客户端数目
+const int tCount = 2;   //线程数
 char ip[] = "127.0.0.1";
 unsigned short port = 4568;
 EasyTcpClient* client[cCount];
@@ -63,9 +63,6 @@ void sendThread(int index) {
     }
 
     Login login[10];
-    //strcpy(login.UserName, "ZhangSan");
-    //strcpy(login.PassWord, "12345678");
-
     while (g_bRun) {
         for (int i = begin; i < end; ++i) {
             client[i]->SendData(login,5);
