@@ -11,7 +11,7 @@
 	#define xPrintf(...)
 #endif
 
-#define MAX_MEMORY_SZIE 64	//内存池能管理的最大内存块大小
+#define MAX_MEMORY_SZIE 1024	//内存池能管理的最大内存块大小
 
 class MemoryAlloc;
 
@@ -172,7 +172,11 @@ class MemoryMgr
 {
 private:
 	MemoryMgr() {
-		init(0, 64, &_mem64);
+		init_szAlloc(0, 64, &_mem64);
+		init_szAlloc(65, 128, &_mem128);
+		init_szAlloc(129, 256, &_mem256);
+		init_szAlloc(257, 512, &_mem512);
+		init_szAlloc(513, 1024, &_mem1024);
 	}
 	~MemoryMgr() {}	//私有化构造和析构函数
 public:
@@ -181,9 +185,13 @@ public:
 	void freeMem(void* pMem);	//释放内存
 	void addRef(void* pMem);	//增加内存块的引用计数
 private:
-	void init(int nBegin, int nEnd, MemoryAlloc* pMemA);	//初始化_szAlloc映射数组
+	void init_szAlloc(int nBegin, int nEnd, MemoryAlloc* pMemA);	//初始化_szAlloc映射数组
 private:
-	MemoryAlloctor<64, 10>_mem64;
+	MemoryAlloctor<64, 100000> _mem64;
+	MemoryAlloctor<128, 100000> _mem128;
+	MemoryAlloctor<256, 100> _mem256;
+	MemoryAlloctor<512, 100> _mem512;
+	MemoryAlloctor<1024, 100> _mem1024;
 	MemoryAlloc* _szAlloc[MAX_MEMORY_SZIE + 1];	//对传入的大小，映射到对应内存池来分配内存块
 };
 
@@ -194,7 +202,7 @@ MemoryMgr& MemoryMgr::Instance()
 	return mgr;
 }
 //初始化_szAlloc映射数组
-void MemoryMgr::init(int nBegin, int nEnd, MemoryAlloc* pMemA)
+void MemoryMgr::init_szAlloc(int nBegin, int nEnd, MemoryAlloc* pMemA)
 {
 	for (int i = nBegin; i <= nEnd; ++i)
 	{
