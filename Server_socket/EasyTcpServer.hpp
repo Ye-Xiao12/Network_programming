@@ -28,7 +28,8 @@
 #ifndef RECV_BUFF_SIZE	//	接受缓存区大小
 #define RECV_BUFF_SIZE 10240
 #endif
-#define SEND_BUFF_SIZE RECV_BUFF_SIZE
+//#define SEND_BUFF_SIZE RECV_BUFF_SIZE
+#define SEND_BUFF_SIZE 64
 class ClientSocket;
 class INetEvent;
 class CellServer;

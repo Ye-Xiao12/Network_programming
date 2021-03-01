@@ -2,7 +2,9 @@
 #define FD_SETSIZE      10001
 #endif
 
+//#include"Alloctor.h"
 #include"EasyTcpServer.hpp"
+
 bool g_bRun = true;
 class MyServer : public EasyTcpServer
 {
@@ -33,19 +35,18 @@ void MyServer::OnNetLeave(ClientSocket* pClient)
 void MyServer::OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header)
 {
 	_msgCount++;
+	LogoutResult* logoutResult = new LogoutResult();
 	switch (header->cmd)
 	{
 	case CMD_LOGIN:
 	{
 		//send recv 
-		Login* login = (Login*)header;
-		LogoutResult *logoutResult = new LogoutResult();
 		pCellServer->addSendTask(pClient, logoutResult);
 	}//接收 消息---处理 发送   生产者 数据缓冲区  消费者 
 	break;
 	case CMD_LOGOUT:
 	{
-		Logout* logout = (Logout*)header;
+		;
 	}
 	break;
 	default:
