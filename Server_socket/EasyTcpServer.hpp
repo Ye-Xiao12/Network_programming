@@ -21,6 +21,7 @@
 #include<mutex>
 #include<functional>
 
+#include"Alloctor.h"
 #include"Message.hpp"
 #include"CELLTimestamp.hpp"
 #include"CELLTask.hpp"
@@ -128,7 +129,6 @@ public:
 	void doTask()
 	{
 		_pClient->sendData(_pHeader);
-		delete _pHeader;
 	}
 };
 

@@ -4,6 +4,7 @@
 #include<mutex>
 #include<functional>
 #include<list>
+#include"Alloctor.h"
 
 //任务类型-基类
 class CellTask
@@ -16,7 +17,7 @@ public:
 	//执行任务
 	virtual void doTask(){}
 private:
-
+	char ch[100];
 };
 
 //执行任务的服务类型

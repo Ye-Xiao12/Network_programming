@@ -2,8 +2,9 @@
 #define FD_SETSIZE      10001
 #endif
 
-//#include"Alloctor.h"
+#include"Alloctor.h"
 #include"EasyTcpServer.hpp"
+LogoutResult* logoutResult = new LogoutResult();
 
 bool g_bRun = true;
 class MyServer : public EasyTcpServer
@@ -35,7 +36,6 @@ void MyServer::OnNetLeave(ClientSocket* pClient)
 void MyServer::OnNetMsg(CellServer* pCellServer, ClientSocket* pClient, DataHeader* header)
 {
 	_msgCount++;
-	LogoutResult* logoutResult = new LogoutResult();
 	switch (header->cmd)
 	{
 	case CMD_LOGIN:
