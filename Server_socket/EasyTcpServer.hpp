@@ -43,12 +43,10 @@ public:
 	ClientSocket(SOCKET sockfd = INVALID_SOCKET) {
 		_sockfd = sockfd;
 		//用来对申请来的内存块做初始化操作
-		//为什么没有初始化就不能用memcpy()函数操作内存？？？？
-		//这一步是关键操作！！！
 		memset(_szMsgBuf, 0, sizeof(_szMsgBuf));
 		memset(_szSendBuf, 0, sizeof(_szSendBuf));
 		_lastPtr = 0;
-		_lastSendPtr = 0;	//我擦，原来这一步才是关键操作！！！！
+		_lastSendPtr = 0;	
 	}
 	//返回该客户端socket文件标识符
 	SOCKET sockfd() {
